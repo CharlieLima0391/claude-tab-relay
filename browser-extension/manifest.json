@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Claude Tab Relay",
+  "version": "1.0.0",
+  "description": "Attach the current tab to Claude Code for live inspection during pentest/debug work. Never runs without an explicit Attach click.",
+  "permissions": ["debugger", "activeTab", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "icons": {}
+}

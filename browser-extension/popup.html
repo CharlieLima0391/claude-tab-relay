@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: -apple-system, sans-serif; width: 280px; padding: 12px; font-size: 13px; }
+  label { display: block; margin-top: 8px; font-weight: 600; }
+  input { width: 100%; box-sizing: border-box; padding: 4px; margin-top: 2px; }
+  button { width: 100%; padding: 8px; margin-top: 12px; font-weight: 600; cursor: pointer; }
+  #status { margin-top: 10px; padding: 6px; border-radius: 4px; font-size: 12px; }
+  .status-on { background: #dafbe1; color: #1a7f37; }
+  .status-off { background: #f6f8fa; color: #57606a; }
+  .status-err { background: #ffebe9; color: #cf222e; }
+  .note { font-size: 11px; color: #57606a; margin-top: 10px; }
+</style>
+</head>
+<body>
+  <label>Relay URL (ws://host:8822)</label>
+  <input id="relayUrl" placeholder="ws://192.168.1.10:8822">
+  <label>Device name</label>
+  <input id="deviceName" placeholder="my-laptop-chrome">
+  <label>Token (from browser_relay_ctl.py pair)</label>
+  <input id="token" type="password">
+  <button id="toggleBtn">Attach current tab</button>
+  <div id="status" class="status-off">Not attached</div>
+  <div class="note">While attached, Chrome shows its own debugging banner on this tab - that's normal and can't be hidden.</div>
+  <script src="popup.js"></script>
+</body>
+</html>

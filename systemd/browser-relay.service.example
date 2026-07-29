@@ -1,0 +1,15 @@
+[Unit]
+Description=Claude Tab Relay - WebSocket bridge for the browser extension
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USER
+Group=YOUR_USER
+WorkingDirectory=/path/to/claude-tab-relay
+ExecStart=/path/to/venv/bin/python /path/to/claude-tab-relay/server/browser_relay.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
