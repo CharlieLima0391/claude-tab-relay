@@ -11,7 +11,7 @@ when you need Claude looking at *your own live session*, not a fresh one.
 
 ```
 Browser extension  <--WebSocket-->  relay server  <--loopback HTTP-->  Claude (Bash)
-(chrome.debugger)        :8822        (this repo)         :8823
+(chrome.debugger)        :8822    (server/browser_relay.py)     :8823
 ```
 
 - The **extension** runs in Chrome/Chromium/Edge/Brave. It never does anything until you
