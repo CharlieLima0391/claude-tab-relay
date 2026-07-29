@@ -14,18 +14,91 @@ Browser extension  <--WebSocket-->  relay server  <--loopback HTTP-->  Claude (B
 (chrome.debugger)        :8822    (server/browser_relay.py)     :8823
 ```
 
-- The **extension** runs in Chrome/Chromium/Edge/Brave. It never does anything until you
-  explicitly click **Attach** in its popup, and once attached, Chrome shows its own
-  "this extension is debugging this tab" banner for as long as it's active — that banner
-  can't be hidden, by either of us. It uses `chrome.debugger` (the same protocol
-  DevTools itself uses) on the one tab you attach, nothing else.
-- The **relay server** (`server/browser_relay.py`) is a small Python/WebSocket daemon
-  that authenticates each device with its own token, forwards commands one way and
-  console/network events the other, and logs every single thing that happens to
-  `state/browser-relay-audit.log`.
-- **Claude's side** talks to a loopback-only HTTP control API (`127.0.0.1:8823`) —
-  nothing on the network can issue commands except whoever already has shell access to
-  the machine running the relay.
+Four moving parts. Each one is described below with what it does, what it needs, which
+parts of it you're allowed to change, and where the hard edges are.
+
+### 1. Browser extension (`browser-extension/`)
+
+- **What it is**: a Manifest V3 extension (`background.js` + `popup.html`/`popup.js`)
+  that runs inside the browser itself.
+- **What it needs**: Chrome, Chromium, Edge, or Brave, with Developer mode enabled to
+  load it (`chrome://extensions` → Load unpacked). It is **not** published to any
+  extension store - every device needs it loaded manually.
+- **What's configurable**: the relay URL, device name, and token are all entered by hand
+  in the popup and saved via `chrome.storage.local` - nothing is hardcoded in the
+  extension's code. Point it at any relay server, on any host/port, just by typing a
+  different URL in.
+- **Limitations**: attaches to exactly one tab at a time, only the tab that was active
+  *when you clicked Attach* (switching tabs afterward doesn't move the attachment).
+  Cannot attach to a browser-internal `chrome://` page - Chrome blocks the debugger API
+  there entirely, not something this tool can work around. Chromium-family only; there
+  is no Firefox/Safari equivalent of `chrome.debugger`, so this extension will not work
+  in those browsers at all.
+
+### 2. The WebSocket connection (extension ↔ relay server)
+
+- **What it is**: a single persistent connection the extension opens to the relay,
+  default port **8822**. Carries small JSON messages both ways - an auth handshake once
+  at connect time, then commands flowing to the browser and results/events flowing back.
+- **What's configurable**: the relay's listening host/port are read from environment
+  variables at startup - `RELAY_WS_HOST` (default `0.0.0.0`) and `RELAY_WS_PORT`
+  (default `8822`). Change either by setting the env var before running
+  `server/browser_relay.py` (or uncommenting the matching line in the systemd example).
+  The extension side needs no code change either way - it just connects to whatever
+  `ws://host:port` you type into its popup.
+- **Limitations**: this is plain `ws://`, not `wss://` (no TLS) - fine on a trusted LAN
+  or over a VPN like Tailscale, genuinely not fine across the open internet. If you need
+  that, put it behind a reverse proxy that terminates TLS (e.g. Caddy/nginx) rather than
+  exposing it directly - not something this project implements itself.
+
+### 3. Relay server (`server/browser_relay.py`)
+
+- **What it is**: a small Python daemon with no framework dependency beyond the
+  `websockets` package. Validates each device's token (hash comparison, never stores
+  the raw token), tracks who's currently connected, and appends every connect/disconnect/
+  command to `state/browser-relay-audit.log`.
+- **What it needs**: Python 3.9+, the `websockets` package, and somewhere to keep running
+  (foreground terminal, `systemd`, or your OS's equivalent - see the systemd example for
+  Linux).
+- **What's configurable**: all four of `RELAY_WS_HOST`, `RELAY_WS_PORT`,
+  `RELAY_CONTROL_HOST`, `RELAY_CONTROL_PORT`, plus `RELAY_COMMAND_TIMEOUT_SECONDS` (how
+  long to wait for a browser tab to answer a command before giving up, default 20s) are
+  environment-variable overrides - see the top of `server/browser_relay.py` for the exact
+  names/defaults.
+- **Limitations**: single-process, in-memory connection tracking - restarting the relay
+  drops every attached device and they'll need to click Attach again. No built-in
+  persistence of *which tab* was attached across a restart, by design (nothing should
+  reattach itself without you clicking the button again).
+
+### 4. Loopback HTTP control API (also inside `browser_relay.py`, port 8823)
+
+- **What it is**: a second, much simpler listener - plain HTTP, JSON in and out, no
+  WebSocket - that `server/browser_relay_ctl.py` (and Claude, via that same script) talks
+  to in order to actually issue a command to a connected device.
+- **What's configurable**: `RELAY_CONTROL_HOST`/`RELAY_CONTROL_PORT` (defaults
+  `127.0.0.1`/`8823`), same env vars as above. `browser_relay_ctl.py` reads the same two
+  variables, so change them together, on the same machine.
+- **What you should not change, and why**: `RELAY_CONTROL_HOST` defaults to
+  `127.0.0.1` (loopback-only) deliberately. This port has **no authentication of its
+  own** - anything that can reach it can command any currently-attached browser tab.
+  That's an acceptable trust boundary only because "anything that can reach it" is
+  restricted to processes on the same machine. Binding it to `0.0.0.0` (or any
+  network-reachable address) removes that boundary entirely and is not a supported
+  configuration - if you need the driving side on a different machine from the relay,
+  put a real authenticating proxy in front of this port yourself; this project doesn't
+  do it for you.
+
+### 5. Claude Code (or whatever is actually driving it)
+
+- **What it is**: in the intended use, Claude Code's own shell access, running
+  `server/browser_relay_ctl.py run --device-name ... --script steps.json` and reading
+  the JSON result back. There's nothing Claude-specific about the wire protocol, though
+  - anything capable of POSTing JSON to a local HTTP endpoint could drive this the same
+  way, so the "Claude" box in the diagram really just means "whatever process has shell
+  access to the relay machine."
+- **Requirement**: must run on the same machine as the relay server, because of the
+  loopback restriction described above. This is the one component with no separate
+  "port" of its own - it's a client of the control API, not a listener.
 
 ## What you need before you start
 

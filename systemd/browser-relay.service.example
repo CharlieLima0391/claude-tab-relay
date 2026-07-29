@@ -7,6 +7,12 @@ Type=simple
 User=YOUR_USER
 Group=YOUR_USER
 WorkingDirectory=/path/to/claude-tab-relay
+# Uncomment and edit any of these to override the defaults (8822/8823/127.0.0.1) - see
+# "Components, ports, and what can change" in README.md before changing CONTROL_HOST.
+# Environment=RELAY_WS_PORT=8822
+# Environment=RELAY_CONTROL_PORT=8823
+# Environment=RELAY_WS_HOST=0.0.0.0
+# Environment=RELAY_CONTROL_HOST=127.0.0.1
 ExecStart=/path/to/venv/bin/python /path/to/claude-tab-relay/server/browser_relay.py
 Restart=on-failure
 RestartSec=3

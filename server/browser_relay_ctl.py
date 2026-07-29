@@ -28,6 +28,7 @@ import argparse
 import base64
 import hashlib
 import json
+import os
 import secrets
 import sys
 import time
@@ -36,7 +37,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEVICES_FILE = REPO_ROOT / "state" / "browser-relay-devices.json"
-CONTROL_BASE = "http://127.0.0.1:8823"
+# Must match RELAY_CONTROL_HOST/RELAY_CONTROL_PORT if you changed those for
+# server/browser_relay.py - this CLI only ever needs to reach it on localhost.
+CONTROL_BASE = "http://{}:{}".format(
+    os.environ.get("RELAY_CONTROL_HOST", "127.0.0.1"),
+    os.environ.get("RELAY_CONTROL_PORT", "8823"),
+)
 
 
 def load_devices() -> dict:

@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import threading
 import time
 import uuid
@@ -44,11 +45,15 @@ STATE_DIR = REPO_ROOT / "state"
 DEVICES_FILE = STATE_DIR / "browser-relay-devices.json"
 AUDIT_LOG = STATE_DIR / "browser-relay-audit.log"
 
-WS_HOST = "0.0.0.0"
-WS_PORT = 8822
-CONTROL_HOST = "127.0.0.1"
-CONTROL_PORT = 8823
-COMMAND_TIMEOUT_SECONDS = 20
+# All four of these can be overridden by environment variable - useful if the defaults
+# collide with something else already running, or your setup needs the control API on
+# a non-default port. CONTROL_HOST should almost never be changed from 127.0.0.1 - see
+# the "Loopback control API" section in README.md for why.
+WS_HOST = os.environ.get("RELAY_WS_HOST", "0.0.0.0")
+WS_PORT = int(os.environ.get("RELAY_WS_PORT", "8822"))
+CONTROL_HOST = os.environ.get("RELAY_CONTROL_HOST", "127.0.0.1")
+CONTROL_PORT = int(os.environ.get("RELAY_CONTROL_PORT", "8823"))
+COMMAND_TIMEOUT_SECONDS = int(os.environ.get("RELAY_COMMAND_TIMEOUT_SECONDS", "20"))
 EVENT_BUFFER_PER_DEVICE = 500
 
 _loop: asyncio.AbstractEventLoop | None = None
